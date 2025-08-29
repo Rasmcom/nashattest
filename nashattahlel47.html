@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>أداة تحليل خطة الأنشطة الطلابية</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #f3f4f6; /* Fallback color */
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url('https://j.top4top.io/p_3528x4url1.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            opacity: 0.3; /* 30% transparency */
+            z-index: -1;
+        }
+        .card {
+            background-color: rgba(255, 255, 255, 0.95); /* White with slight transparency */
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .edit-btn {
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease-in-out;
+        }
+        .edit-mode .edit-btn {
+            opacity: 1;
+            visibility: visible;
+        }
+        #add-program-modal {
+            transition: opacity 0.3s ease;
+        }
+        
+        @media print {
+            body { 
+                font-family: 'Cairo', sans-serif;
+                -webkit-print-color-adjust: exact !important;
+                color-adjust: exact !important;
+                font-size: 9px; 
+                background-image: none !important; /* Hide background when printing */
+            }
+            body::before {
+                display: none; /* Hide pseudo-element in print */
+            }
+            @page {
+                size: A4 portrait;
+                margin: 10mm;
+            }
+            .card, .no-print { 
+                border: 1px solid #eee !important; 
+                box-shadow: none !important;
+                page-break-inside: avoid;
+            }
+            .no-print { display: none !important; }
+            .print-grid {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr;
+                gap: 0.5rem;
+            }
+            .plan-card {
+                page-break-inside: avoid !important;
+                margin-bottom: 0.25rem !important;
+                padding: 0.5rem !important; 
+            }
+            .plan-card h2 {
+                font-size: 1rem !important;
+                margin-bottom: 0.25rem !important;
+                padding-bottom: 0.25rem !important;
+            }
+            .plan-card .summary-grid {
+                margin-bottom: 0.25rem !important;
+                gap: 0.25rem !important;
+            }
+            .plan-card .summary-grid > div {
+                padding: 0.25rem 0.4rem !important;
+            }
+            .results-cards .font-medium,
+            .plan-card .summary-grid span {
+                font-size: 12px !important;
+            }
+            .results-cards .text-xl,
+            .plan-card .summary-grid strong {
+                font-size: 14px !important;
+            }
+            .plan-columns {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                gap: 0.5rem;
+            }
+            .plan-columns > div {
+                padding: 0.5rem !important;
+            }
+            .plan-columns h3 {
+                font-size: 0.9rem !important;
+                margin-bottom: 0.25rem !important;
+            }
+            .plan-columns ul {
+                margin-top: 0 !important;
+            }
+            .plan-columns li {
+                margin-bottom: 0 !important;
+            }
+            .no-margin {
+                margin: 0 !important;
+            }
+            #stage-plans-container {
+                margin: 0 !important;
+            }
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div class="container mx-auto p-4 sm:p-6 md:p-8">
+        <header class="text-center mb-8">
+            <div class="inline-block bg-white/70 backdrop-blur-sm p-4 rounded-xl shadow-md">
+                <div class="flex justify-center items-center gap-4">
+                    <div class="text-center">
+                        <div class="flex items-center justify-center">
+                             <img src="https://e.top4top.io/p_3528bgfse1.gif" alt="تحليل الأنشطة" class="h-16 w-16 rounded-full ml-4">
+                            <h1 class="text-2xl sm:text-3xl font-bold" style="color: #29999f;">تحليل قدرة المدرسة على تنفيذ الأنشطة</h1>
+                        </div>
+                        <p class="text-md sm:text-lg text-gray-500 mt-2">أداة لحساب وتوزيع خطة النشاط الطلابي</p>
+                        <p class="text-sm font-bold mt-1" style="color: #65b9a6;">هذه الأداة مجانية مقدمة من أ. محمد الكناني</p>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="flex flex-col lg:flex-row gap-8">
+            <!-- Input Section -->
+            <div class="w-full lg:w-1/3 card p-6 self-start">
+                <h2 class="text-2xl font-semibold mb-6 border-b-2 border-gray-200 pb-3">1. المدخلات</h2>
+                
+                <div class="mb-4">
+                    <label for="weeks" class="block text-lg font-medium text-gray-700 mb-2">الأسابيع الفعلية طوال العام</label>
+                    <input type="number" id="weeks" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500" value="34" placeholder="مثال: 34">
+                </div>
+                
+                <div class="mb-4">
+                    <label for="analyst-name" class="block text-lg font-medium text-gray-700 mb-2">اسم مُعد التقرير (اختياري)</label>
+                    <input type="text" id="analyst-name" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500" placeholder="مثال: أ. محمد الكناني">
+                </div>
+
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium text-gray-700 mb-3">اختر المراحل الدراسية</h3>
+                    <div id="stages-checkboxes" class="grid grid-cols-2 gap-3">
+                        <div><label class="flex items-center space-x-2 space-x-reverse"><input type="checkbox" data-stage="primary" class="h-5 w-5 text-green-600 border-gray-300 rounded focus:ring-green-500"> <span>الأولية</span></label></div>
+                        <div><label class="flex items-center space-x-2 space-x-reverse"><input type="checkbox" data-stage="upper" class="h-5 w-5 text-green-600 border-gray-300 rounded focus:ring-green-500"> <span>العليا</span></label></div>
+                        <div><label class="flex items-center space-x-2 space-x-reverse"><input type="checkbox" data-stage="middle" class="h-5 w-5 text-green-600 border-gray-300 rounded focus:ring-green-500"> <span>المتوسطة</span></label></div>
+                        <div><label class="flex items-center space-x-2 space-x-reverse"><input type="checkbox" data-stage="high" class="h-5 w-5 text-green-600 border-gray-300 rounded focus:ring-green-500"> <span>الثانوية</span></label></div>
+                    </div>
+                </div>
+
+                <div id="sessions-inputs" class="space-y-4">
+                    <!-- Dynamic inputs for sessions will be inserted here -->
+                </div>
+
+                <button id="analyze-btn" class="w-full mt-8 py-3 px-4 bg-blue-600 text-white font-bold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    بدء التحليل
+                </button>
+                 <button id="print-btn" class="w-full mt-3 py-3 px-4 bg-gray-600 text-white font-bold rounded-lg shadow-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 hidden">
+                    🖨️ طباعة التقرير
+                </button>
+            </div>
+
+            <!-- Results Section -->
+            <div class="w-full lg:w-2/3 space-y-6">
+                <div id="results-summary"></div>
+                <div id="results-cards" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div id="initial-message" class="md:col-span-2 text-center text-gray-500 card p-8">
+                        <p>النتائج ستظهر هنا بعد إدخال البيانات والضغط على زر التحليل.</p>
+                    </div>
+                </div>
+                 <div id="edit-controls" class="hidden no-print">
+                    <button id="edit-plan-btn" class="w-full py-3 px-4 bg-yellow-500 text-white font-bold rounded-lg shadow-md hover:bg-yellow-600">✏️ تعديل الخطة</button>
+                    <button id="save-plan-btn" class="w-full py-3 px-4 bg-green-600 text-white font-bold rounded-lg shadow-md hover:bg-green-700 hidden">✔️ حفظ التعديلات</button>
+                </div>
+                 <div id="unfeasible-container"></div>
+                 <div id="stage-plans-container" class="space-y-6">
+                    <!-- Stage-specific plan cards will be injected here -->
+                 </div>
+            </div>
+        </div>
+    </div>
+
+     <!-- Footer -->
+    <footer class="mt-12 py-6 border-t border-gray-200 no-print">
+        <div class="container mx-auto flex items-center justify-center gap-4">
+            <a href="https://www.rasmcom.com" target="_blank">
+                <img src="https://e.top4top.io/p_3463x5tj40.png" alt="شعار رسم" class="h-16 w-auto">
+            </a>
+            <p class="text-sm text-gray-600">
+                جميع الحقوق محفوظة لقناة رسم للتصميم والخدمات التعليمية 2025
+            </p>
+        </div>
+    </footer>
+
+    <!-- Add Program Modal -->
+    <div id="add-program-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden opacity-0 no-print">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md" id="modal-content">
+            <h3 class="text-xl font-bold mb-4" id="modal-title">إضافة برنامج</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">اختر المرحلة:</label>
+                    <div id="modal-stages" class="mt-1 grid grid-cols-2 gap-2"></div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">اختر الفصل الدراسي:</label>
+                    <div id="modal-semesters" class="mt-1 grid grid-cols-2 gap-2">
+                        <label class="flex items-center p-2 border rounded-md"><input type="radio" name="semester" value="semester1" class="ml-2"> الفصل الأول</label>
+                        <label class="flex items-center p-2 border rounded-md"><input type="radio" name="semester" value="semester2" class="ml-2"> الفصل الثاني</label>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end space-x-2 space-x-reverse">
+                <button id="modal-cancel" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">إلغاء</button>
+                <button id="modal-confirm" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">إضافة</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        const REQUIRED_PROGRAMS_PER_CLASS = {
+            primary: 166, upper: 209, middle: 221, high: 229
+        };
+        const SESSIONS_PER_WEEK = {
+            primary: 3, upper: 2, middle: 1, high_2: 2, high_3: 1
+        };
+        const activitiesData = [
+            { id: 'citizenship', title: 'المواطنة والحياة', programs: [
+                { name: 'التطوع الطلابي', primary: 4, upper: 6, middle: 5, high: 5 }, { name: 'مهارات طموحة', primary: 6, upper: 4, middle: 3, high: 2 }, { name: 'قيمنا حياة', primary: 0, upper: 12, middle: 12, high: 12 },
+            ]},
+            { id: 'culture', title: 'الثقافة والفنون', programs: [
+                 { name: 'الفن السابع (السينما)', primary: 8, upper: 8, middle: 8, high: 8 }, { name: 'حدائق الفن', primary: 6, upper: 6, middle: 6, high: 6 }, { name: 'الأزياء السعودية', primary: 4, upper: 4, middle: 6, high: 6 }, { name: 'الثقافة الإعلامية', primary: 4, upper: 4, middle: 6, high: 8 }, { name: 'تصاميم تراثية معاصرة', primary: 5, upper: 5, middle: 5, high: 5 }, { name: 'الفنون المسرحية', primary: 8, upper: 8, middle: 8, high: 8 }, { name: 'البرنامج الموسيقي (الأناشيد الوطنية)', primary: 8, upper: 8, middle: 8, high: 8 }, { name: 'حكايات مرئية', primary: 6, upper: 6, middle: 11, high: 11 },
+            ]},
+            { id: 'sports', title: 'الرياضة والصحة', programs: [
+                { name: 'مهارات الرياضات الجماعية', primary: 6, upper: 8, middle: 8, high: 8 }, { name: 'مهارات الرياضات الفردية', primary: 8, upper: 8, middle: 8, high: 6 }, { name: 'مهارات رياضات الدفاع عن النفس', primary: 8, upper: 8, middle: 8, high: 6 }, { name: 'مهارات الرياضات الإلكترونية والترفيه', primary: 8, upper: 8, middle: 6, high: 8 }, { name: 'مهارات الرياضات الذهنية', primary: 6, upper: 8, middle: 8, high: 8 }, { name: 'مهارات الأولمبياد الرياضي', primary: 6, upper: 8, middle: 8, high: 8 },
+            ]},
+            { id: 'science', title: 'العلوم والتقنية', programs: [
+                { name: 'برنامج تطبيقات STEM', primary: 3, upper: 5, middle: 7, high: 7 }, { name: 'برنامج التصاميم العلمية التقنية', primary: 2, upper: 5, middle: 7, high: 7 }, { name: 'برنامج رواد فضاء المستقبل', primary: 3, upper: 5, middle: 7, high: 9 }, { name: 'برنامج مدن المستقبل', primary: 3, upper: 4, middle: 7, high: 9 }, { name: 'برنامج الذكاء الاصطناعي', primary: 10, upper: 10, middle: 10, high: 10 }, { name: 'برنامج تحدي إنترنت الأشياء', primary: 3, upper: 4, middle: 7, high: 9 },
+            ]},
+            { id: 'scouting', title: 'النشاط الكشفي', programs: [
+                { name: 'خيمتي الجميلة', primary: 3, upper: 0, middle: 0, high: 0 }, { name: 'خشبة وحبل', primary: 0, upper: 12, middle: 0, high: 0 }, { name: 'الملاحة على اليابس', primary: 0, upper: 0, middle: 3, high: 0 }, { name: 'أغامر وأكتشف', primary: 0, upper: 0, middle: 0, high: 5 }, { name: 'براعم البيئة والمجتمع', primary: 2, upper: 0, middle: 0, high: 0 }, { name: 'أشارك مجتمعي وأزرع شجرة', primary: 0, upper: 3, middle: 0, high: 0 }, { name: 'مجتمعي وبيئتي مسؤوليتي', primary: 0, upper: 0, middle: 6, high: 0 }, { name: 'سفير البيئة والمجتمع', primary: 0, upper: 0, middle: 0, high: 5 }, { name: 'بصمتي الكشفية', primary: 3, upper: 0, middle: 0, high: 0 }, { name: 'وطني في قلبي', primary: 0, upper: 3, middle: 0, high: 0 }, { name: 'صناع التغيير', primary: 0, upper: 0, middle: 3, high: 0 }, { name: 'سواعد الكشفية', primary: 0, upper: 0, middle: 0, high: 6 }, { name: 'براعم النور', primary: 2, upper: 0, middle: 0, high: 0 }, { name: 'كنوز الصغار', primary: 0, upper: 2, middle: 0, high: 0 }, { name: 'من هدي القرآن والسنة', primary: 0, upper: 0, middle: 3, high: 0 }, { name: 'درب الإحسان', primary: 0, upper: 0, middle: 0, high: 3 }, { name: 'بوصلة الاكتشاف', primary: 3, upper: 0, middle: 0, high: 0 }, { name: 'خيمة التجارب المسلية', primary: 0, upper: 6, middle: 0, high: 0 }, { name: 'مخيمي التقني', primary: 0, upper: 0, middle: 10, high: 0 }, { name: 'واحة الإبداع الكشفي', primary: 0, upper: 0, middle: 0, high: 4 }, { name: 'عاداتي الصحية الكشفية', primary: 3, upper: 0, middle: 0, high: 0 }, { name: 'طبقي الكشفي', primary: 0, upper: 3, middle: 0, high: 0 }, { name: 'خطواتي الكشفية الصحية', primary: 0, upper: 0, middle: 3, high: 0 }, { name: 'مهرجان الأفلام الكشفية الصحية', primary: 0, upper: 0, middle: 0, high: 5 }, { name: 'مهاراتي وكشفيتي', primary: 2, upper: 0, middle: 0, high: 0 }, { name: 'صافرة واصطفاف', primary: 0, upper: 2, middle: 0, high: 0 }, { name: 'مهاراتي الكشفية من الاستعداد إلى الإنجاز', primary: 0, upper: 0, middle: 4, high: 0 }, { name: 'أفقي الكشفي الواسع', primary: 0, upper: 0, middle: 0, high: 6 },
+            ]},
+            { id: 'events', title: 'الأيام والمناسبات', programs: [
+                { name: 'اليوم الوطني', primary: 4, upper: 4, middle: 4, high: 4, date: '4/1' }, { name: 'يوم التسامح العالمي', primary: 2, upper: 2, middle: 1, high: 1, date: '5/25' }, { name: 'اليوم العالمي للطفل', primary: 2, upper: 2, middle: 0, high: 0, date: '5/29' }, { name: 'اليوم العالمي لذوي الإعاقة', primary: 2, upper: 2, middle: 2, high: 2, date: '6/12' }, { name: 'اليوم العالمي للغة العربية', primary: 2, upper: 2, middle: 1, high: 1, date: '6/27' }, { name: 'اليوم العالمي للتعليم', primary: 2, upper: 2, middle: 2, high: 2, date: '8/7' }, { name: 'يوم التأسيس', primary: 4, upper: 4, middle: 4, high: 4, date: '9/5' }, { name: 'يوم العلم', primary: 3, upper: 3, middle: 2, high: 2, date: '9/22' }, { name: 'يوم السعودية الخضراء', primary: 3, upper: 3, middle: 2, high: 2, date: '10/8' }, { name: 'يوم الصحة العالمي', primary: 2, upper: 2, middle: 2, high: 2, date: '10/19' },
+            ]},
+        ];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const stagesCheckboxes = document.getElementById('stages-checkboxes');
+            const sessionsInputsContainer = document.getElementById('sessions-inputs');
+            const analyzeBtn = document.getElementById('analyze-btn');
+            const printBtn = document.getElementById('print-btn');
+            const resultsCardsContainer = document.getElementById('results-cards');
+            const summaryContainer = document.getElementById('results-summary');
+            const stagePlansContainer = document.getElementById('stage-plans-container');
+            const editControls = document.getElementById('edit-controls');
+            const editPlanBtn = document.getElementById('edit-plan-btn');
+            const savePlanBtn = document.getElementById('save-plan-btn');
+            const modal = document.getElementById('add-program-modal');
+            const modalCancel = document.getElementById('modal-cancel');
+            const modalConfirm = document.getElementById('modal-confirm');
+
+            let currentAnalysisData = {};
+            let currentPlan = {};
+            let isEditMode = false;
+            let programToAddInfo = null; // {name, stage}
+
+            const stageNames = {
+                primary: 'الأولية', upper: 'العليا', middle: 'المتوسطة', high_2: 'ثاني ثانوي', high_3: 'ثالث ثانوي'
+            };
+            
+            stagesCheckboxes.addEventListener('change', (e) => {
+                if (e.target.type === 'checkbox') {
+                    const stage = e.target.dataset.stage;
+                    const stageName = stage === 'high' ? 'الثانوية' : stageNames[stage];
+                    const existingInput = document.getElementById(`inputs-${stage}`);
+
+                    if (e.target.checked && !existingInput) {
+                        let inputHTML = '';
+                        if (stage === 'high') {
+                            inputHTML = `
+                                <p class="font-bold text-center mb-3 text-gray-700">${stageName}</p>
+                                <div class="mb-2">
+                                    <label for="classes-high-2" class="block text-sm font-medium text-gray-600 mb-1">عدد فصول ثاني ثانوي</label>
+                                    <input type="number" id="classes-high-2" class="w-full p-2 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500" placeholder="عدد الفصول">
+                                </div>
+                                <div>
+                                    <label for="classes-high-3" class="block text-sm font-medium text-gray-600 mb-1">عدد فصول ثالث ثانوي</label>
+                                    <input type="number" id="classes-high-3" class="w-full p-2 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500" placeholder="عدد الفصول">
+                                </div>`;
+                        } else {
+                            inputHTML = `
+                                <p class="font-bold text-center mb-3 text-gray-700">${stageName}</p>
+                                <div class="mb-2">
+                                    <label for="classes-${stage}" class="block text-sm font-medium text-gray-600 mb-1">عدد الفصول</label>
+                                    <input type="number" id="classes-${stage}" class="w-full p-2 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500" placeholder="مثال: 10">
+                                    <p class="text-xs text-gray-500 mt-1">حصص النشاط: ${SESSIONS_PER_WEEK[stage]} أسبوعيًا</p>
+                                </div>`;
+                        }
+                        const inputDiv = document.createElement('div');
+                        inputDiv.id = `inputs-${stage}`;
+                        inputDiv.className = 'p-3 bg-gray-50 rounded-lg border border-gray-200';
+                        inputDiv.innerHTML = inputHTML;
+                        sessionsInputsContainer.appendChild(inputDiv);
+
+                    } else if (!e.target.checked && existingInput) {
+                        existingInput.remove();
+                    }
+                }
+            });
+
+            analyzeBtn.addEventListener('click', () => {
+                const weeks = parseInt(document.getElementById('weeks').value) || 34;
+                const selectedStagesCheckboxes = document.querySelectorAll('#stages-checkboxes input:checked');
+                if (selectedStagesCheckboxes.length === 0) {
+                    alert('الرجاء اختيار مرحلة دراسية واحدة على الأقل.');
+                    return;
+                }
+
+                let analysisData = {};
+                
+                for (const checkbox of selectedStagesCheckboxes) {
+                    const stage = checkbox.dataset.stage;
+                    if (stage === 'high') {
+                        const n2 = parseInt(document.getElementById('classes-high-2').value) || 0;
+                        const n3 = parseInt(document.getElementById('classes-high-3').value) || 0;
+                        
+                        if (n2 > 0) {
+                             analysisData['high_2'] = {
+                                name: stageNames['high_2'],
+                                totalRequired: REQUIRED_PROGRAMS_PER_CLASS.high * n2,
+                                totalAvailable: n2 * SESSIONS_PER_WEEK.high_2 * weeks,
+                                numClasses: n2,
+                                sessionsPerWeek: SESSIONS_PER_WEEK.high_2,
+                            };
+                        }
+                        if (n3 > 0) {
+                             analysisData['high_3'] = {
+                                name: stageNames['high_3'],
+                                totalRequired: REQUIRED_PROGRAMS_PER_CLASS.high * n3,
+                                totalAvailable: n3 * SESSIONS_PER_WEEK.high_3 * weeks,
+                                numClasses: n3,
+                                sessionsPerWeek: SESSIONS_PER_WEEK.high_3,
+                            };
+                        }
+                    } else {
+                        const n = parseInt(document.getElementById(`classes-${stage}`).value) || 0;
+                        if (n === 0) continue;
+                        
+                        analysisData[stage] = {
+                            name: stageNames[stage],
+                            totalRequired: REQUIRED_PROGRAMS_PER_CLASS[stage] * n,
+                            totalAvailable: n * SESSIONS_PER_WEEK[stage] * weeks,
+                            numClasses: n,
+                            sessionsPerWeek: SESSIONS_PER_WEEK[stage]
+                        };
+                    }
+                }
+                
+                if (Object.keys(analysisData).length === 0) {
+                    resultsCardsContainer.innerHTML = `<div class="md:col-span-2 text-center text-gray-500 card p-8"><p>الرجاء إدخال عدد الفصول للبدء.</p></div>`;
+                    summaryContainer.innerHTML = '';
+                    stagePlansContainer.innerHTML = '';
+                    document.getElementById('unfeasible-container').innerHTML = '';
+                    printBtn.classList.add('hidden');
+                    editControls.classList.add('hidden');
+                    return;
+                }
+
+                currentAnalysisData = analysisData;
+                currentPlan = getProgramDistribution(analysisData);
+
+                displayResults(analysisData);
+                rerenderAllPlans();
+                printBtn.classList.remove('hidden');
+                editControls.classList.remove('hidden');
+                savePlanBtn.classList.add('hidden');
+                editPlanBtn.classList.remove('hidden');
+                isEditMode = false;
+            });
+
+            editPlanBtn.addEventListener('click', () => {
+                isEditMode = true;
+                editPlanBtn.classList.add('hidden');
+                savePlanBtn.classList.remove('hidden');
+                rerenderAllPlans();
+            });
+
+            savePlanBtn.addEventListener('click', () => {
+                isEditMode = false;
+                savePlanBtn.classList.add('hidden');
+                editPlanBtn.classList.remove('hidden');
+                rerenderAllPlans();
+            });
+
+            function rerenderAllPlans() {
+                displayStagePlans();
+                displayUnfeasiblePrograms();
+            }
+
+            printBtn.addEventListener('click', function() {
+                const analystName = document.getElementById('analyst-name').value;
+                const summaryHTML = document.getElementById('results-summary').innerHTML;
+                const cardsHTML = document.getElementById('results-cards').innerHTML;
+                const unfeasibleHTML = document.getElementById('unfeasible-container').innerHTML;
+                const plansHTML = document.getElementById('stage-plans-container').innerHTML;
+
+                let headerHTML = `<header class="flex justify-between items-center mb-6 border-b-2 pb-3">
+                                    <h1 style="color: #1E40AF; font-size: 1.5rem; font-weight: bold;">تقرير تحليل خطة النشاط الطلابي</h1>
+                                    ${analystName.trim() !== '' ? `<p class="text-sm font-bold">${analystName}</p>` : ''}
+                                  </header>`;
+
+                const printWindow = window.open('', '_blank');
+                printWindow.document.write(`
+                    <!DOCTYPE html>
+                    <html lang="ar" dir="rtl">
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>تقرير تحليل خطة النشاط</title>
+                        <script src="https://cdn.tailwindcss.com"><\/script>
+                        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+                        <style>
+                            @media print {
+                                body { 
+                                    font-family: 'Cairo', sans-serif;
+                                    -webkit-print-color-adjust: exact !important;
+                                    color-adjust: exact !important;
+                                    font-size: 9px; 
+                                }
+                                @page {
+                                    size: A4 portrait;
+                                    margin: 10mm;
+                                }
+                                .card, .no-print { 
+                                    border: 1px solid #eee !important; 
+                                    box-shadow: none !important;
+                                    page-break-inside: avoid;
+                                }
+                                .no-print { display: none !important; }
+                                .print-grid {
+                                    display: grid !important;
+                                    grid-template-columns: 1fr 1fr;
+                                    gap: 0.5rem;
+                                }
+                                .plan-card {
+                                    page-break-inside: avoid !important;
+                                    margin-bottom: 0.25rem !important;
+                                    padding: 0.5rem !important; 
+                                }
+                                .plan-card h2 {
+                                    font-size: 1rem !important;
+                                    margin-bottom: 0.25rem !important;
+                                    padding-bottom: 0.25rem !important;
+                                }
+                                .plan-card .summary-grid {
+                                    margin-bottom: 0.25rem !important;
+                                    gap: 0.25rem !important;
+                                }
+                                .plan-card .summary-grid > div {
+                                    padding: 0.25rem 0.4rem !important;
+                                }
+                                .results-cards .font-medium,
+                                .plan-card .summary-grid span {
+                                    font-size: 12px !important;
+                                }
+                                .results-cards .text-xl,
+                                .plan-card .summary-grid strong {
+                                    font-size: 14px !important;
+                                }
+                                .plan-columns {
+                                    display: grid !important;
+                                    grid-template-columns: 1fr 1fr !important;
+                                    gap: 0.5rem;
+                                }
+                                .plan-columns > div {
+                                    padding: 0.5rem !important;
+                                }
+                                .plan-columns h3 {
+                                    font-size: 0.9rem !important;
+                                    margin-bottom: 0.25rem !important;
+                                }
+                                .plan-columns ul {
+                                    margin-top: 0 !important;
+                                }
+                                .plan-columns li {
+                                    margin-bottom: 0 !important;
+                                }
+                                .no-margin {
+                                    margin: 0 !important;
+                                }
+                                #stage-plans-container {
+                                    margin: 0 !important;
+                                }
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div>
+                            ${headerHTML}
+                            <section class="mb-4">${summaryHTML}</section>
+                            <h2 style="font-size: 1.1rem; font-weight: bold; margin-bottom: 0.5rem; border-bottom: 1px solid #ccc; padding-bottom: 0.25rem;">ملخص التحليل الإجمالي</h2>
+                            <section class="print-grid mb-4">${cardsHTML}</section>
+                            <section class="mb-4">${unfeasibleHTML}</section>
+                            <section class="no-margin">${plansHTML}</section>
+                        </div>
+                    </body>
+                    </html>
+                `);
+                printWindow.document.close();
+                setTimeout(() => {
+                    printWindow.focus();
+                    printWindow.print();
+                    printWindow.close();
+                }, 500);
+            });
+
+            function displayResults(data) {
+                resultsCardsContainer.innerHTML = ''; 
+                let overallFeasible = true;
+
+                Object.values(data).forEach(stageData => {
+                    if (stageData.totalAvailable < stageData.totalRequired) overallFeasible = false;
+                    
+                    const difference = stageData.totalAvailable - stageData.totalRequired;
+                    const isSurplus = difference >= 0;
+                    
+                    const card = document.createElement('div');
+                    card.className = 'card p-6';
+                    card.innerHTML = `
+                        <h3 class="text-xl font-bold text-gray-800 border-b-2 pb-2 mb-4">${stageData.name}</h3>
+                        <div class="space-y-3 results-cards">
+                            <div class="p-3 rounded-lg bg-blue-100 text-blue-800 flex justify-between items-center">
+                                <span class="font-medium">إجمالي الحصص المتاحة</span>
+                                <strong class="text-xl">${stageData.totalAvailable}</strong>
+                            </div>
+                            <div class="p-3 rounded-lg bg-gray-100 text-gray-800 flex justify-between items-center">
+                                <span class="font-medium">إجمالي الحصص المطلوبة</span>
+                                <strong class="text-xl">${stageData.totalRequired}</strong>
+                            </div>
+                            <div class="p-3 rounded-lg ${isSurplus ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} flex justify-between items-center">
+                                <span class="font-medium">الفرق (النتيجة)</span>
+                                <strong class="text-xl">${isSurplus ? 'فائض' : 'عجز'} ${Math.abs(difference)}</strong>
+                            </div>
+                        </div>`;
+                    resultsCardsContainer.appendChild(card);
+                });
+
+                if (overallFeasible) {
+                    summaryContainer.innerHTML = `<div class="p-5 rounded-lg bg-green-100 border-l-4 border-green-500 text-green-700"><h3 class="text-xl font-bold">✅ الخطة قابلة للتنفيذ</h3><p class="mt-1">عدد حصص النشاط المتاحة يغطي جميع البرامج المطلوبة.</p></div>`;
+                } else {
+                    summaryContainer.innerHTML = `<div class="p-5 rounded-lg bg-red-100 border-l-4 border-red-500 text-red-700"><h3 class="text-xl font-bold">⚠️ الخطة تحتاج إلى مراجعة</h3><p class="mt-1">يوجد عجز في عدد الحصص المتاحة لتنفيذ جميع البرامج.</p></div>`;
+                }
+            }
+
+            function displayUnfeasiblePrograms() {
+                const container = document.getElementById('unfeasible-container');
+                container.innerHTML = '';
+                const unfeasiblePrograms = Object.values(currentPlan.unfeasible).flat();
+
+                if (unfeasiblePrograms.length > 0) {
+                    let sectionsHTML = '';
+                    const unfeasibleBySection = unfeasiblePrograms.reduce((acc, prog) => {
+                        if (!acc[prog.sectionTitle]) acc[prog.sectionTitle] = [];
+                        
+                        const editButton = isEditMode ? `<button data-prog-name="${prog.name}" data-stage="${prog.stage}" class="add-prog-btn edit-btn mr-2 p-1 bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center">&plus;</button>` : '';
+                        acc[prog.sectionTitle].push(`<li class="flex items-center">${editButton}${prog.name} <span class="text-xs text-gray-500 mr-2">(${stageNames[prog.stage]}: ${prog.hours}ح)</span></li>`);
+                        return acc;
+                    }, {});
+
+                    for (const section in unfeasibleBySection) {
+                        sectionsHTML += `<div class="mb-2"><strong class="text-red-700">${section}</strong><ul class="list-disc list-inside text-sm">${unfeasibleBySection[section].join('')}</ul></div>`;
+                    }
+                    const editClass = isEditMode ? 'edit-mode' : '';
+                    container.innerHTML = `<div class="card p-6 bg-red-50 ${editClass}"><h3 class="text-xl font-bold text-red-800 flex items-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>برامج غير منفذة</h3><div class="mt-2 text-sm columns-1 sm:columns-2 md:columns-3">${sectionsHTML}</div></div>`;
+                }
+            }
+
+            function getProgramDistribution(analysisData) {
+                const weeks = parseInt(document.getElementById('weeks').value) || 34;
+                const semester1Weeks = Math.ceil(weeks / 2);
+                const semester2Weeks = Math.floor(weeks / 2);
+                const stages = Object.keys(analysisData);
+                
+                let plan = { stages: {}, unfeasible: {} };
+
+                stages.forEach(stage => {
+                    plan.stages[stage] = { semester1: [], semester2: [] };
+                    plan.unfeasible[stage] = [];
+                    
+                    let capacity = {
+                        semester1: semester1Weeks * analysisData[stage].numClasses * analysisData[stage].sessionsPerWeek,
+                        semester2: semester2Weeks * analysisData[stage].numClasses * analysisData[stage].sessionsPerWeek,
+                    };
+
+                    const stageKey = stage.startsWith('high') ? 'high' : stage;
+                    
+                    const semester1Events = ['يوم التسامح العالمي', 'اليوم العالمي للطفل', 'اليوم العالمي لذوي الإعاقة', 'اليوم العالمي للغة العربية', 'اليوم الوطني'];
+                    const semester2Events = ['اليوم العالمي للتعليم', 'يوم التأسيس', 'يوم العلم', 'يوم السعودية الخضراء', 'يوم الصحة العالمي'];
+
+                    let allProgramsForStage = [];
+                    activitiesData.forEach(section => {
+                        section.programs.forEach(program => {
+                            if (program[stageKey] > 0) {
+                                allProgramsForStage.push({ ...program, sectionTitle: section.title });
+                            }
+                        });
+                    });
+
+                    // Place forced events first
+                    allProgramsForStage.forEach(p => {
+                        const cost = p[stageKey] * analysisData[stage].numClasses;
+                        if (semester1Events.includes(p.name)) {
+                            plan.stages[stage].semester1.push(p);
+                            capacity.semester1 -= cost;
+                        } else if (semester2Events.includes(p.name)) {
+                             plan.stages[stage].semester2.push(p);
+                             capacity.semester2 -= cost;
+                        }
+                    });
+
+                    // Filter out placed events and sort flexible programs (smallest first for packing)
+                    const placedNames = new Set([...plan.stages[stage].semester1.map(p=>p.name), ...plan.stages[stage].semester2.map(p=>p.name)]);
+                    let flexiblePrograms = allProgramsForStage
+                        .filter(p => !placedNames.has(p.name))
+                        .sort((a, b) => (a[stageKey] * analysisData[stage].numClasses) - (b[stageKey] * analysisData[stage].numClasses));
+
+                    // Pack flexible programs
+                    flexiblePrograms.forEach(p => {
+                        const cost = p[stageKey] * analysisData[stage].numClasses;
+                        if (capacity.semester1 >= cost) {
+                            plan.stages[stage].semester1.push(p);
+                            capacity.semester1 -= cost;
+                        } else if (capacity.semester2 >= cost) {
+                            plan.stages[stage].semester2.push(p);
+                            capacity.semester2 -= cost;
+                        } else {
+                            plan.unfeasible[stage].push({ name: p.name, sectionTitle: p.sectionTitle, hours: p[stageKey], stage: stage });
+                        }
+                    });
+                });
+                return plan;
+            }
+            
+            function displayStagePlans() {
+                stagePlansContainer.innerHTML = '';
+                const stages = Object.keys(currentAnalysisData);
+
+                stages.forEach(stage => {
+                    const card = document.createElement('div');
+                    card.className = 'card p-6 plan-card';
+                    const stageKey = stage.startsWith('high') ? 'high' : stage;
+                    
+                    const s1Programs = currentPlan.stages[stage].semester1;
+                    const s2Programs = currentPlan.stages[stage].semester2;
+
+                    const s1Hours = s1Programs.reduce((sum, p) => sum + p[stageKey], 0) * currentAnalysisData[stage].numClasses;
+                    const s2Hours = s2Programs.reduce((sum, p) => sum + p[stageKey], 0) * currentAnalysisData[stage].numClasses;
+                    const totalUsed = s1Hours + s2Hours;
+                    const difference = currentAnalysisData[stage].totalAvailable - totalUsed;
+
+                    const generateProgramListHTML = (programs, semester) => {
+                        if (programs.length === 0) return '<li>لا توجد برامج مقترحة</li>';
+                        
+                        const grouped = programs.reduce((acc, prog) => {
+                            if (!acc[prog.sectionTitle]) acc[prog.sectionTitle] = [];
+                            acc[prog.sectionTitle].push(prog);
+                            return acc;
+                        }, {});
+
+                        let html = '';
+                        Object.keys(grouped).sort().forEach(sectionTitle => {
+                            html += `<strong class="text-gray-700 text-sm block mt-2">${sectionTitle}</strong><ul class="list-disc list-inside text-sm space-y-1">`;
+                            grouped[sectionTitle].sort((a,b) => a.name.localeCompare(b.name)).forEach(p => {
+                                const editButton = isEditMode ? `<button data-prog-name="${p.name}" data-semester="${semester}" data-stage="${stage}" class="remove-prog-btn edit-btn mr-2 p-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center">&minus;</button>` : '';
+                                html += `<li class="flex items-center">${editButton}${p.name} (${p[stageKey]} حصص)</li>`;
+                            });
+                            html += `</ul>`;
+                        });
+                        return html;
+                    };
+
+                    let s1List = generateProgramListHTML(s1Programs, 'semester1');
+                    let s2List = generateProgramListHTML(s2Programs, 'semester2');
+                    
+                    const editClass = isEditMode ? 'edit-mode' : '';
+
+                    card.innerHTML = `
+                        <div class="${editClass}">
+                            <h2 class="text-2xl font-bold text-green-700 border-b-2 border-green-200 pb-2 mb-4 flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                                </svg>
+                                مقترح خطة: ${currentAnalysisData[stage].name}
+                            </h2>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4 summary-grid">
+                                <div class="p-2 bg-blue-100 text-blue-800 rounded-lg flex justify-between items-center px-4">
+                                    <span class="text-base font-medium">حصص متاحة:</span>
+                                    <strong class="text-xl">${currentAnalysisData[stage].totalAvailable}</strong>
+                                </div>
+                                <div class="p-2 bg-gray-200 text-gray-800 rounded-lg flex justify-between items-center px-4">
+                                    <span class="text-base font-medium">حصص منفذة:</span>
+                                    <strong class="text-xl">${totalUsed}</strong>
+                                </div>
+                                <div class="p-2 ${difference >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} rounded-lg flex justify-between items-center px-4">
+                                    <span class="text-base font-medium">${difference >= 0 ? 'الفائض' : 'العجز'}:</span>
+                                    <strong class="text-xl">${Math.abs(difference)}</strong>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-6 plan-columns">
+                                <div class="border rounded-lg p-4 bg-gray-50/50">
+                                    <h3 class="font-bold text-lg mb-2">الفصل الدراسي الأول</h3>
+                                    ${s1List}
+                                </div>
+                                <div class="border rounded-lg p-4 bg-gray-50/50">
+                                    <h3 class="font-bold text-lg mb-2">الفصل الدراسي الثاني</h3>
+                                    ${s2List}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    stagePlansContainer.appendChild(card);
+                });
+            }
+
+            function findOriginalProgram(programName) {
+                for (const section of activitiesData) {
+                    const program = section.programs.find(p => p.name === programName);
+                    if (program) {
+                        return { ...program, sectionTitle: section.title };
+                    }
+                }
+                return null;
+            }
+
+            document.body.addEventListener('click', function(e){
+                if (e.target.classList.contains('remove-prog-btn')) {
+                    const progName = e.target.dataset.progName;
+                    const semester = e.target.dataset.semester;
+                    const stage = e.target.dataset.stage;
+                    
+                    const planSemester = currentPlan.stages[stage][semester];
+                    const progIndex = planSemester.findIndex(p => p.name === progName);
+
+                    if (progIndex > -1) {
+                        const [removedProg] = planSemester.splice(progIndex, 1);
+                        const stageKey = stage.startsWith('high') ? 'high' : stage;
+                        
+                        currentPlan.unfeasible[stage].push({
+                            name: removedProg.name,
+                            sectionTitle: removedProg.sectionTitle,
+                            hours: removedProg[stageKey],
+                            stage: stage
+                        });
+                        rerenderAllPlans();
+                    }
+                }
+
+                if (e.target.classList.contains('add-prog-btn')) {
+                    const progName = e.target.dataset.progName;
+                    const stage = e.target.dataset.stage;
+
+                    programToAddInfo = { name: progName, stage: stage };
+                    
+                    document.getElementById('modal-title').innerText = `إضافة برنامج: ${progName} لـ ${stageNames[stage]}`;
+                    
+                    const modalStages = document.getElementById('modal-stages');
+                    modalStages.innerHTML = `<p class="font-semibold text-gray-800">${stageNames[stage]}</p>`;
+                    
+                    modal.classList.remove('hidden');
+                    setTimeout(() => modal.classList.remove('opacity-0'), 10);
+                }
+            });
+
+            modalCancel.addEventListener('click', () => {
+                modal.classList.add('opacity-0');
+                setTimeout(() => modal.classList.add('hidden'), 300);
+            });
+
+            modalConfirm.addEventListener('click', () => {
+                const selectedSemester = document.querySelector('input[name="semester"]:checked');
+
+                if (!programToAddInfo || !selectedSemester) {
+                    alert('الرجاء اختيار الفصل الدراسي.');
+                    return;
+                }
+
+                const { name, stage } = programToAddInfo;
+                const semesterKey = selectedSemester.value;
+
+                const unfeasibleStage = currentPlan.unfeasible[stage];
+                const progIndex = unfeasibleStage.findIndex(p => p.name === name);
+
+                if (progIndex > -1) {
+                    const [progToAdd] = unfeasibleStage.splice(progIndex, 1);
+                    const originalProg = findOriginalProgram(progToAdd.name);
+                    currentPlan.stages[stage][semesterKey].push(originalProg);
+                    rerenderAllPlans();
+                }
+
+                modalCancel.click();
+            });
+
+        });
+    </script>
+</body>
+</html>
+
