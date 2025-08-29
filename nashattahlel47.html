@@ -174,6 +174,9 @@
                  <button id="print-btn" class="w-full mt-3 py-3 px-4 bg-gray-600 text-white font-bold rounded-lg shadow-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 hidden">
                     🖨️ طباعة التقرير
                 </button>
+                 <button id="reset-btn" class="w-full mt-3 py-3 px-4 bg-red-600 text-white font-bold rounded-lg shadow-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 hidden">
+                    🔄 أعد التحليل (مسح الكل)
+                </button>
             </div>
 
             <!-- Results Section -->
@@ -214,8 +217,8 @@
             <h3 class="text-xl font-bold mb-4" id="modal-title">إضافة برنامج</h3>
             <div class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">اختر المرحلة:</label>
-                    <div id="modal-stages" class="mt-1 grid grid-cols-2 gap-2"></div>
+                    <label class="block text-sm font-medium text-gray-700">المرحلة:</label>
+                    <div id="modal-stages" class="mt-1"></div>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700">اختر الفصل الدراسي:</label>
@@ -266,6 +269,7 @@
             const sessionsInputsContainer = document.getElementById('sessions-inputs');
             const analyzeBtn = document.getElementById('analyze-btn');
             const printBtn = document.getElementById('print-btn');
+            const resetBtn = document.getElementById('reset-btn');
             const resultsCardsContainer = document.getElementById('results-cards');
             const summaryContainer = document.getElementById('results-summary');
             const stagePlansContainer = document.getElementById('stage-plans-container');
@@ -325,8 +329,8 @@
                 }
             });
 
-            analyzeBtn.addEventListener('click', () => {
-                const weeks = parseInt(document.getElementById('weeks').value) || 34;
+            function analyzeAndDisplay() {
+                 const weeks = parseInt(document.getElementById('weeks').value) || 34;
                 const selectedStagesCheckboxes = document.querySelectorAll('#stages-checkboxes input:checked');
                 if (selectedStagesCheckboxes.length === 0) {
                     alert('الرجاء اختيار مرحلة دراسية واحدة على الأقل.');
@@ -379,6 +383,7 @@
                     stagePlansContainer.innerHTML = '';
                     document.getElementById('unfeasible-container').innerHTML = '';
                     printBtn.classList.add('hidden');
+                    resetBtn.classList.add('hidden');
                     editControls.classList.add('hidden');
                     return;
                 }
@@ -389,11 +394,16 @@
                 displayResults(analysisData);
                 rerenderAllPlans();
                 printBtn.classList.remove('hidden');
+                resetBtn.classList.remove('hidden');
                 editControls.classList.remove('hidden');
                 savePlanBtn.classList.add('hidden');
                 editPlanBtn.classList.remove('hidden');
                 isEditMode = false;
-            });
+                
+                saveState(); // Save state after successful analysis
+            }
+
+            analyzeBtn.addEventListener('click', analyzeAndDisplay);
 
             editPlanBtn.addEventListener('click', () => {
                 isEditMode = true;
@@ -815,9 +825,74 @@
 
                 modalCancel.click();
             });
+            
+            // --- Local Storage and Reset Logic ---
+            const storageKey = 'activityAnalysisState';
+
+            function saveState() {
+                const state = {
+                    weeks: document.getElementById('weeks').value,
+                    analystName: document.getElementById('analyst-name').value,
+                    stages: {}
+                };
+                const selectedStagesCheckboxes = document.querySelectorAll('#stages-checkboxes input:checked');
+                selectedStagesCheckboxes.forEach(checkbox => {
+                    const stage = checkbox.dataset.stage;
+                    state.stages[stage] = {};
+                    if (stage === 'high') {
+                        state.stages[stage].classes2 = document.getElementById('classes-high-2')?.value;
+                        state.stages[stage].classes3 = document.getElementById('classes-high-3')?.value;
+                    } else {
+                        state.stages[stage].classes = document.getElementById(`classes-${stage}`)?.value;
+                    }
+                });
+                localStorage.setItem(storageKey, JSON.stringify(state));
+            }
+
+            function loadState() {
+                const savedStateJSON = localStorage.getItem(storageKey);
+                if (!savedStateJSON) return;
+                const savedState = JSON.parse(savedStateJSON);
+
+                document.getElementById('weeks').value = savedState.weeks || '34';
+                document.getElementById('analyst-name').value = savedState.analystName || '';
+
+                Object.keys(savedState.stages).forEach(stage => {
+                    const checkbox = document.querySelector(`#stages-checkboxes input[data-stage="${stage}"]`);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                        checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                });
+
+                setTimeout(() => {
+                    Object.keys(savedState.stages).forEach(stage => {
+                        if (stage === 'high') {
+                            const classes2Input = document.getElementById('classes-high-2');
+                            const classes3Input = document.getElementById('classes-high-3');
+                            if (classes2Input) classes2Input.value = savedState.stages.high.classes2 || '';
+                            if (classes3Input) classes3Input.value = savedState.stages.high.classes3 || '';
+                        } else {
+                            const classesInput = document.getElementById(`classes-${stage}`);
+                            if (classesInput) classesInput.value = savedState.stages[stage].classes || '';
+                        }
+                    });
+                    
+                    if (Object.keys(savedState.stages).length > 0) {
+                        analyzeBtn.click();
+                    }
+                }, 100); 
+            }
+            
+            resetBtn.addEventListener('click', () => {
+                localStorage.removeItem(storageKey);
+                window.location.reload();
+            });
+
+            // Load saved state on page load
+            loadState();
 
         });
     </script>
 </body>
 </html>
-

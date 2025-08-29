@@ -108,6 +108,24 @@
                             </div>
                         </a>
                     </div>
+
+                    <!-- Analysis Tool Section -->
+                    <div class="mt-8 border-t-2 border-gray-200 pt-6">
+                        <a href="nashattahlel47.html" class="plan-link block p-6 bg-gray-50 rounded-lg border border-gray-200 hover:shadow-lg hover:border-teal-400 transition-all duration-300 transform hover:-translate-y-1 text-right">
+                            <div class="flex items-center">
+                                <div class="pl-4">
+                                     <svg class="w-16 h-16 text-teal-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                       <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"></path>
+                                     </svg>
+                                </div>
+                                <div>
+                                    <h2 class="text-xl font-semibold mb-2 text-gray-700">أداة تحليل خطة النشاط</h2>
+                                    <p class="text-sm text-gray-600">لتحليل قدرة المدرسة على تنفيذ برامج الأنشطة الطلابية وفق الدليل المعتمد.</p>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+
                 </div>
             </div>
         </main>
@@ -121,7 +139,7 @@
                 </svg>
             </div>
             <div class="max-w-4xl mx-auto flex justify-center items-center px-4">
-                <a href="https://t.me/+SJnY9vPy7yo5YmI1" target="_blank" rel="noopener noreferrer" class="ml-4">
+                 <a href="https://t.me/+SJnY9vPy7yo5YmI1" target="_blank" rel="noopener noreferrer" class="ml-4">
                     <img src="https://h.top4top.io/p_352355x7b1.png" alt="شعار رسم" class="h-16 w-auto">
                 </a>
                 <p class="text-base">جميع الحقوق محفوظة لقناة رسم للتصميم والخدمات التعليمية 2025</p>
@@ -141,10 +159,24 @@
     </button>
 
     <script>
+        // Function to show the intro modal with animation
+        function openIntroModal() {
+            const introModal = document.getElementById('intro-modal');
+            const introContent = introModal.querySelector('div');
+            introModal.classList.remove('hidden');
+            setTimeout(() => {
+                introModal.classList.remove('opacity-0');
+                introContent.classList.remove('scale-95');
+                introContent.classList.add('scale-100');
+            }, 50);
+        }
+
         // Function to close the intro modal and show the main content
         function closeIntroModal() {
             const introModal = document.getElementById('intro-modal');
             const mainView = document.getElementById('main-view');
+
+            localStorage.setItem('introModalClosedTimestamp', new Date().getTime());
 
             introModal.classList.add('opacity-0', 'scale-95');
             introModal.classList.remove('opacity-100', 'scale-100');
@@ -152,12 +184,12 @@
             setTimeout(() => {
                 introModal.classList.add('hidden');
                 mainView.classList.remove('opacity-0');
-            }, 300); // Match transition duration
+            }, 300);
         }
 
         // Function to handle the "Visit Tool" button click
         function visitTool(event) {
-            event.preventDefault(); // Prevent default link behavior
+            event.preventDefault(); 
             const introModal = document.getElementById('intro-modal');
             const mainView = document.getElementById('main-view');
             const planView = document.getElementById('plan-view');
@@ -165,15 +197,15 @@
             const backButton = document.getElementById('back-to-main-btn');
             const planUrl = event.currentTarget.getAttribute('href');
 
-            // 1. Hide the intro modal
+            localStorage.setItem('introModalClosedTimestamp', new Date().getTime());
+
             introModal.classList.add('opacity-0');
             setTimeout(() => {
                 introModal.classList.add('hidden');
             }, 300);
 
-            // 2. Show the plan view with the correct URL
             planIframe.src = planUrl;
-            mainView.classList.add('hidden'); // Ensure main view is hidden
+            mainView.classList.add('hidden');
             planView.classList.remove('hidden');
             backButton.classList.remove('hidden');
         }
@@ -183,41 +215,40 @@
             const pledgeModal = document.getElementById('pledge-modal');
             const pledgeContent = document.getElementById('pledge-content');
             const agreeBtn = document.getElementById('agree-btn');
-            const introModal = document.getElementById('intro-modal');
-            const introContent = introModal.querySelector('div');
             
             // App elements
             const mainView = document.getElementById('main-view');
             const planView = document.getElementById('plan-view');
             const planIframe = document.getElementById('plan-iframe');
             const backButton = document.getElementById('back-to-main-btn');
-            const planLinks = document.querySelectorAll('.plan-link');
+            // Select all plan links, INCLUDING the one for the tool
+            const planLinks = document.querySelectorAll('a.plan-link');
 
-            // --- PLEDGE LOGIC ---
-            const PLEDGE_EXPIRATION_TIME = 60 * 60 * 1000; // 1 hour in milliseconds
+            // --- STARTUP LOGIC ---
+            const PLEDGE_EXPIRATION_TIME = 60 * 60 * 1000; // 1 hour
+            const INTRO_MODAL_EXPIRATION_TIME = 60 * 60 * 1000; // 1 hour
+
             const lastAgreedTimestamp = localStorage.getItem('pledgeAgreedTimestamp');
+            const lastIntroClosedTimestamp = localStorage.getItem('introModalClosedTimestamp');
             const now = new Date().getTime();
 
-            // Show pledge if it's the first time or if an hour has passed
-            if (!lastAgreedTimestamp || (now - lastAgreedTimestamp > PLEDGE_EXPIRATION_TIME)) {
+            const needsPledge = !lastAgreedTimestamp || (now - lastAgreedTimestamp > PLEDGE_EXPIRATION_TIME);
+            const needsIntro = !lastIntroClosedTimestamp || (now - lastIntroClosedTimestamp > INTRO_MODAL_EXPIRATION_TIME);
+
+            if (needsPledge) {
                 pledgeModal.classList.remove('hidden');
                 setTimeout(() => {
                     pledgeContent.classList.remove('scale-95', 'opacity-0');
                     pledgeContent.classList.add('scale-100', 'opacity-100');
                 }, 100);
+            } else if (needsIntro) {
+                openIntroModal();
             } else {
-                // If pledge is not needed, show intro modal immediately
-                introModal.classList.remove('hidden');
-                setTimeout(() => {
-                    introModal.classList.remove('opacity-0');
-                    introContent.classList.remove('scale-95');
-                    introContent.classList.add('scale-100');
-                }, 100);
+                mainView.classList.remove('opacity-0');
             }
 
-            // Agree button event listener
+            // --- EVENT LISTENERS ---
             agreeBtn.addEventListener('click', () => {
-                // Set the timestamp for the next check
                 localStorage.setItem('pledgeAgreedTimestamp', new Date().getTime());
                 
                 pledgeContent.classList.add('scale-95', 'opacity-0');
@@ -226,18 +257,10 @@
 
                 setTimeout(() => {
                     pledgeModal.classList.add('hidden');
-                    // Show the intro modal after pledge
-                    introModal.classList.remove('hidden');
-                    setTimeout(() => {
-                        introModal.classList.remove('opacity-0');
-                        introContent.classList.remove('scale-95');
-                        introContent.classList.add('scale-100');
-                    }, 50); // Short delay for smooth transition
+                    openIntroModal();
                 }, 300);
             });
 
-            // --- APP LOGIC ---
-            // This listener now only applies to links outside the intro modal
             planLinks.forEach(link => {
                 link.addEventListener('click', (event) => {
                     event.preventDefault();
@@ -252,8 +275,7 @@
             });
 
             backButton.addEventListener('click', () => {
-                planIframe.src = 'about:blank'; // Unload the iframe content
-                
+                planIframe.src = 'about:blank';
                 mainView.classList.remove('hidden');
                 planView.classList.add('hidden');
                 backButton.classList.add('hidden');
