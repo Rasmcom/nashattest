@@ -123,6 +123,12 @@
             #stage-plans-container {
                 margin: 0 !important;
             }
+            .unfeasible-print-columns {
+                columns: 2 !important;
+                -webkit-columns: 2 !important;
+                -moz-columns: 2 !important;
+                gap: 1rem !important;
+            }
         }
     </style>
 </head>
@@ -522,6 +528,12 @@
                                 #stage-plans-container {
                                     margin: 0 !important;
                                 }
+                                .unfeasible-print-columns {
+                                    columns: 2 !important;
+                                    -webkit-columns: 2 !important;
+                                    -moz-columns: 2 !important;
+                                    gap: 1rem !important;
+                                }
                             }
                         </style>
                     </head>
@@ -602,7 +614,7 @@
                         sectionsHTML += `<div class="mb-2"><strong class="text-red-700">${section}</strong><ul class="list-disc list-inside text-sm">${unfeasibleBySection[section].join('')}</ul></div>`;
                     }
                     const editClass = isEditMode ? 'edit-mode' : '';
-                    container.innerHTML = `<div class="card p-6 bg-red-50 ${editClass}"><h3 class="text-xl font-bold text-red-800 flex items-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>برامج غير منفذة</h3><div class="mt-2 text-sm columns-1 sm:columns-2 md:columns-3">${sectionsHTML}</div></div>`;
+                    container.innerHTML = `<div class="card p-6 bg-red-50 ${editClass}"><h3 class="text-xl font-bold text-red-800 flex items-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>برامج غير منفذة</h3><div class="mt-2 text-sm columns-1 sm:columns-2 md:columns-3 unfeasible-print-columns">${sectionsHTML}</div></div>`;
                 }
             }
 
@@ -737,7 +749,7 @@
                                     <strong class="text-xl">${Math.abs(difference)}</strong>
                                 </div>
                             </div>
-                            <div class="grid grid-cols-2 gap-6 plan-columns">
+                            <div class="plan-columns">
                                 <div class="border rounded-lg p-4 bg-gray-50/50">
                                     <h3 class="font-bold text-lg mb-2">الفصل الدراسي الأول</h3>
                                     ${s1List}
