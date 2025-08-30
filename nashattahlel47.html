@@ -42,11 +42,6 @@
         #add-program-modal {
             transition: opacity 0.3s ease;
         }
-        .plan-columns {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.5rem; /* Equivalent to gap-6 for screen */
-        }
         
         @media print {
             body { 
@@ -165,6 +160,15 @@
                 <div class="mb-4">
                     <label for="analyst-name" class="block text-lg font-medium text-gray-700 mb-2">اسم مُعد التقرير (اختياري)</label>
                     <input type="text" id="analyst-name" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500" placeholder="مثال: أ. محمد الكناني">
+                </div>
+                
+                <div class="mb-4">
+                    <h3 class="text-lg font-medium text-gray-700 mb-2">نطاق التحليل</h3>
+                    <div id="view-mode-radios" class="grid grid-cols-1 gap-2 p-2 bg-gray-50 rounded-lg">
+                        <div><label class="flex items-center space-x-2 space-x-reverse"><input type="radio" name="viewMode" value="fullYear" class="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500" checked> <span>عام دراسي كامل (34 أسبوع افتراضي)</span></label></div>
+                        <div><label class="flex items-center space-x-2 space-x-reverse"><input type="radio" name="viewMode" value="semester1" class="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"> <span>الفصل الأول فقط</span></label></div>
+                        <div><label class="flex items-center space-x-2 space-x-reverse"><input type="radio" name="viewMode" value="semester2" class="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"> <span>الفصل الثاني فقط</span></label></div>
+                    </div>
                 </div>
 
                 <div class="mb-6">
@@ -343,15 +347,19 @@
             });
 
             function analyzeAndDisplay() {
-                 const weeks = parseInt(document.getElementById('weeks').value) || 34;
+                const fullYearWeeks = parseInt(document.getElementById('weeks').value) || 34;
+                const displayMode = document.querySelector('input[name="viewMode"]:checked').value;
                 const selectedStagesCheckboxes = document.querySelectorAll('#stages-checkboxes input:checked');
+                
                 if (selectedStagesCheckboxes.length === 0) {
                     alert('الرجاء اختيار مرحلة دراسية واحدة على الأقل.');
                     return;
                 }
 
                 let analysisData = {};
-                
+                const analysisWeeks = (displayMode === 'fullYear') ? fullYearWeeks : Math.ceil(fullYearWeeks / 2);
+                const requiredMultiplier = (displayMode === 'fullYear') ? 1 : 0.5;
+
                 for (const checkbox of selectedStagesCheckboxes) {
                     const stage = checkbox.dataset.stage;
                     if (stage === 'high') {
@@ -361,8 +369,8 @@
                         if (n2 > 0) {
                              analysisData['high_2'] = {
                                 name: stageNames['high_2'],
-                                totalRequired: REQUIRED_PROGRAMS_PER_CLASS.high * n2,
-                                totalAvailable: n2 * SESSIONS_PER_WEEK.high_2 * weeks,
+                                totalRequired: Math.round(REQUIRED_PROGRAMS_PER_CLASS.high * n2 * requiredMultiplier),
+                                totalAvailable: n2 * SESSIONS_PER_WEEK.high_2 * analysisWeeks,
                                 numClasses: n2,
                                 sessionsPerWeek: SESSIONS_PER_WEEK.high_2,
                             };
@@ -370,8 +378,8 @@
                         if (n3 > 0) {
                              analysisData['high_3'] = {
                                 name: stageNames['high_3'],
-                                totalRequired: REQUIRED_PROGRAMS_PER_CLASS.high * n3,
-                                totalAvailable: n3 * SESSIONS_PER_WEEK.high_3 * weeks,
+                                totalRequired: Math.round(REQUIRED_PROGRAMS_PER_CLASS.high * n3 * requiredMultiplier),
+                                totalAvailable: n3 * SESSIONS_PER_WEEK.high_3 * analysisWeeks,
                                 numClasses: n3,
                                 sessionsPerWeek: SESSIONS_PER_WEEK.high_3,
                             };
@@ -382,8 +390,8 @@
                         
                         analysisData[stage] = {
                             name: stageNames[stage],
-                            totalRequired: REQUIRED_PROGRAMS_PER_CLASS[stage] * n,
-                            totalAvailable: n * SESSIONS_PER_WEEK[stage] * weeks,
+                            totalRequired: Math.round(REQUIRED_PROGRAMS_PER_CLASS[stage] * n * requiredMultiplier),
+                            totalAvailable: n * SESSIONS_PER_WEEK[stage] * analysisWeeks,
                             numClasses: n,
                             sessionsPerWeek: SESSIONS_PER_WEEK[stage]
                         };
@@ -413,7 +421,7 @@
                 editPlanBtn.classList.remove('hidden');
                 isEditMode = false;
                 
-                saveState(); // Save state after successful analysis
+                saveState();
             }
 
             analyzeBtn.addEventListener('click', analyzeAndDisplay);
@@ -562,7 +570,10 @@
             });
 
             function displayResults(data) {
-                resultsCardsContainer.innerHTML = ''; 
+                resultsCardsContainer.innerHTML = '';
+                const initialMessage = document.getElementById('initial-message');
+                if(initialMessage) initialMessage.style.display = 'none';
+
                 let overallFeasible = true;
 
                 Object.values(data).forEach(stageData => {
@@ -623,9 +634,10 @@
             }
 
             function getProgramDistribution(analysisData) {
-                const weeks = parseInt(document.getElementById('weeks').value) || 34;
-                const semester1Weeks = Math.ceil(weeks / 2);
-                const semester2Weeks = Math.floor(weeks / 2);
+                const fullYearWeeks = parseInt(document.getElementById('weeks').value) || 34;
+                const displayMode = document.querySelector('input[name="viewMode"]:checked').value;
+                const semester1Weeks = Math.ceil(fullYearWeeks / 2);
+                const semester2Weeks = Math.floor(fullYearWeeks / 2);
                 const stages = Object.keys(analysisData);
                 
                 let plan = { stages: {}, unfeasible: {} };
@@ -635,8 +647,8 @@
                     plan.unfeasible[stage] = [];
                     
                     let capacity = {
-                        semester1: semester1Weeks * analysisData[stage].numClasses * analysisData[stage].sessionsPerWeek,
-                        semester2: semester2Weeks * analysisData[stage].numClasses * analysisData[stage].sessionsPerWeek,
+                        semester1: (displayMode === 'semester2') ? 0 : semester1Weeks * analysisData[stage].numClasses * analysisData[stage].sessionsPerWeek,
+                        semester2: (displayMode === 'semester1') ? 0 : semester2Weeks * analysisData[stage].numClasses * analysisData[stage].sessionsPerWeek,
                     };
 
                     const stageKey = stage.startsWith('high') ? 'high' : stage;
@@ -653,25 +665,30 @@
                         });
                     });
 
+                    let programsToDistribute = allProgramsForStage;
+                    if (displayMode === 'semester1') {
+                        programsToDistribute = allProgramsForStage.filter(p => !semester2Events.includes(p.name));
+                    } else if (displayMode === 'semester2') {
+                        programsToDistribute = allProgramsForStage.filter(p => !semester1Events.includes(p.name));
+                    }
+
                     // Place forced events first
-                    allProgramsForStage.forEach(p => {
+                    programsToDistribute.forEach(p => {
                         const cost = p[stageKey] * analysisData[stage].numClasses;
-                        if (semester1Events.includes(p.name)) {
+                        if (semester1Events.includes(p.name) && capacity.semester1 > 0) {
                             plan.stages[stage].semester1.push(p);
                             capacity.semester1 -= cost;
-                        } else if (semester2Events.includes(p.name)) {
+                        } else if (semester2Events.includes(p.name) && capacity.semester2 > 0) {
                              plan.stages[stage].semester2.push(p);
                              capacity.semester2 -= cost;
                         }
                     });
 
-                    // Filter out placed events and sort flexible programs (smallest first for packing)
                     const placedNames = new Set([...plan.stages[stage].semester1.map(p=>p.name), ...plan.stages[stage].semester2.map(p=>p.name)]);
-                    let flexiblePrograms = allProgramsForStage
+                    let flexiblePrograms = programsToDistribute
                         .filter(p => !placedNames.has(p.name))
                         .sort((a, b) => (a[stageKey] * analysisData[stage].numClasses) - (b[stageKey] * analysisData[stage].numClasses));
 
-                    // Pack flexible programs
                     flexiblePrograms.forEach(p => {
                         const cost = p[stageKey] * analysisData[stage].numClasses;
                         if (capacity.semester1 >= cost) {
@@ -691,6 +708,8 @@
             function displayStagePlans() {
                 stagePlansContainer.innerHTML = '';
                 const stages = Object.keys(currentAnalysisData);
+                const displayMode = document.querySelector('input[name="viewMode"]:checked').value;
+
 
                 stages.forEach(stage => {
                     const card = document.createElement('div');
@@ -702,7 +721,12 @@
 
                     const s1Hours = s1Programs.reduce((sum, p) => sum + p[stageKey], 0) * currentAnalysisData[stage].numClasses;
                     const s2Hours = s2Programs.reduce((sum, p) => sum + p[stageKey], 0) * currentAnalysisData[stage].numClasses;
-                    const totalUsed = s1Hours + s2Hours;
+                    
+                    let totalUsed;
+                    if(displayMode === 'semester1') totalUsed = s1Hours;
+                    else if(displayMode === 'semester2') totalUsed = s2Hours;
+                    else totalUsed = s1Hours + s2Hours;
+
                     const difference = currentAnalysisData[stage].totalAvailable - totalUsed;
 
                     const generateProgramListHTML = (programs, semester) => {
@@ -726,10 +750,32 @@
                         return html;
                     };
 
-                    let s1List = generateProgramListHTML(s1Programs, 'semester1');
-                    let s2List = generateProgramListHTML(s2Programs, 'semester2');
-                    
                     const editClass = isEditMode ? 'edit-mode' : '';
+                    let planColumnsHTML = '';
+
+                    if (displayMode === 'semester1') {
+                        planColumnsHTML = `<div class="border rounded-lg p-4 bg-gray-50/50">
+                                            <h3 class="font-bold text-lg mb-2">مقترح الفصل الدراسي الأول</h3>
+                                            ${generateProgramListHTML(s1Programs, 'semester1')}
+                                        </div>`;
+                    } else if (displayMode === 'semester2') {
+                        planColumnsHTML = `<div class="border rounded-lg p-4 bg-gray-50/50">
+                                            <h3 class="font-bold text-lg mb-2">مقترح الفصل الدراسي الثاني</h3>
+                                            ${generateProgramListHTML(s2Programs, 'semester2')}
+                                        </div>`;
+                    } else { // fullYear
+                        planColumnsHTML = `<div class="border rounded-lg p-4 bg-gray-50/50">
+                                                <h3 class="font-bold text-lg mb-2">الفصل الدراسي الأول</h3>
+                                                ${generateProgramListHTML(s1Programs, 'semester1')}
+                                            </div>
+                                            <div class="border rounded-lg p-4 bg-gray-50/50">
+                                                <h3 class="font-bold text-lg mb-2">الفصل الدراسي الثاني</h3>
+                                                ${generateProgramListHTML(s2Programs, 'semester2')}
+                                            </div>`;
+                    }
+                    
+                    const gridClass = (displayMode === 'fullYear') ? 'plan-columns' : '';
+
 
                     card.innerHTML = `
                         <div class="${editClass}">
@@ -753,15 +799,8 @@
                                     <strong class="text-xl">${Math.abs(difference)}</strong>
                                 </div>
                             </div>
-                            <div class="plan-columns">
-                                <div class="border rounded-lg p-4 bg-gray-50/50">
-                                    <h3 class="font-bold text-lg mb-2">الفصل الدراسي الأول</h3>
-                                    ${s1List}
-                                </div>
-                                <div class="border rounded-lg p-4 bg-gray-50/50">
-                                    <h3 class="font-bold text-lg mb-2">الفصل الدراسي الثاني</h3>
-                                    ${s2List}
-                                </div>
+                            <div class="${gridClass}">
+                                ${planColumnsHTML}
                             </div>
                         </div>
                     `;
@@ -854,6 +893,7 @@
                 const state = {
                     weeks: document.getElementById('weeks').value,
                     analystName: document.getElementById('analyst-name').value,
+                    viewMode: document.querySelector('input[name="viewMode"]:checked').value,
                     stages: {}
                 };
                 const selectedStagesCheckboxes = document.querySelectorAll('#stages-checkboxes input:checked');
@@ -877,6 +917,12 @@
 
                 document.getElementById('weeks').value = savedState.weeks || '34';
                 document.getElementById('analyst-name').value = savedState.analystName || '';
+                
+                if (savedState.viewMode) {
+                    const viewModeRadio = document.querySelector(`input[name="viewMode"][value="${savedState.viewMode}"]`);
+                    if (viewModeRadio) viewModeRadio.checked = true;
+                }
+
 
                 Object.keys(savedState.stages).forEach(stage => {
                     const checkbox = document.querySelector(`#stages-checkboxes input[data-stage="${stage}"]`);
